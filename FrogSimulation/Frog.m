@@ -1,12 +1,14 @@
 classdef Frog
     %Frog カエルの個体のパラメータや発声/休止状態の切り替えを制御
     properties
-        flag = 1;           % 発声/休止条件判定フラグ。 0:休止/1:発声
-        size                % 体長
-        energy              % エネルギー残量
-        pActive = 1;        % 休止状態から発声状態へと移行するときの確率
-        pSleep  = 1;        % 発声状態から休止状態へと移行するときの確率
-        plotArray(1,100);   % 描画する点を格納する配列
+        flag = 0;             % 発声/休止条件判定フラグ　 0:休止/1:発声
+        energyZeroflag = 0;   % エネルギーが0になった時に1になるフラグ
+        MAXenergy = 30;       % エネルギーの最大値
+        size                  % 体長
+        energy                % エネルギー残量
+        pActive = 1;          % 休止状態から発声状態へと移行するときの確率
+        pSleep  = 1;          % 発声状態から休止状態へと移行するときの確率
+        plotArray(1,100);     % 描画する点を格納する配列
     end
     
     methods
@@ -43,19 +45,28 @@ classdef Frog
             for k = 1:length(obj)
                 % 発声状態の場合の切り替え
                 if obj(k).flag == 1
-                    if obj(k).pActive > rand
-                        obj(k) = ModeActive(obj(k), t, k);
-                    else 
-                        obj(k).flag = 0;
-                        obj(k) = ModeSleep(obj(k), t);
+                    if obj(k).energyZeroflag == 1 
+                        obj(k) = ModeSleep(obj(k), t);  
+                    else
+                        if obj(k).pActive > rand
+                            obj(k) = ModeActive(obj(k), t, k);
+                        else 
+                            obj(k).flag = 0;
+                            obj(k) = ModeSleep(obj(k), t);
+                        end
                     end
+                    
                 % 休止状態の場合の切り替え
                 else 
-                    if obj(k).pSleep > rand
-                        obj(k) = ModeSleep(obj(k), t);
+                    if obj(k).energy == obj(k).MAXenergy    % もしエネルギーがMAXなら
+                        obj(k) = ModeActive(obj(k), t, k);  % 自動的にActiveへ遷移
                     else
-                        obj(k).flag = 1;
-                        obj(k) = ModeActive(obj(k), t, k);
+                        if obj(k).pSleep > rand
+                            obj(k) = ModeSleep(obj(k), t);
+                        else
+                            obj(k).flag = 1;
+                            obj(k) = ModeActive(obj(k), t, k);
+                        end
                     end
                 end
             end
@@ -63,22 +74,22 @@ classdef Frog
             
         % 発声状態の処理
         function obj = ModeActive(obj, time, num)
-            if obj.flag == 1
-                obj.energy = obj.energy - 1;
-                obj.plotArray(1,time) = num;
-                if obj.energy == 0    % もしエネルギーが0になったら
-                    obj.flag = 0;     % 自動的に休止状態へ移行
-                end
+            obj.energy = obj.energy - 1;
+            obj.plotArray(1,time) = num;
+            % もしエネルギーが0になったらzeroフラグを立てる
+            if obj.energy == 0
+                obj.energyZeroflag = 1;
             end
         end
         
         % 休止状態の処理
         function obj = ModeSleep(obj, time)
-            if obj.flag == 0
-                obj.energy = obj.energy + 1;
-                obj.plotArray(1,time) = -1; 
-                if obj.energy == 30   % もしエネルギーが上限に達したら
-                    obj.flag = 1;     % 自動的に発声状態へ移行
+            obj.energy = obj.energy + 1;
+            obj.plotArray(1,time) = -1;
+            % エネルギーが0になったことによりSleepに遷移した場合の処理
+            if obj.energyZeroflag == 1
+                if obj.energy == obj.MAXenergy
+                    obj.energyZeroflag = 0;
                 end
             end
         end
